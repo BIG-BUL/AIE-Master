@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AIE Brief Trainer</title>
+<style>
+:root{
+  --base:#152229;
+  --panel:#1D3039;
+  --line:#2D4652;
+  --stock:#DFE4DE;
+  --stock2:#CDD5CE;
+  --ink:#0B1317;
+  --amber:#E7A23C;
+  --red:#BF4436;
+  --muted:#93A8B1;
+  --ok:#5E9E78;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--base);
+  color:var(--stock);
+  font-family:"Helvetica Neue",Helvetica,Arial,system-ui,sans-serif;
+  font-size:16px;
+  line-height:1.45;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:720px;margin:0 auto;padding:16px 14px 96px}
+h1{
+  font-size:19px;font-weight:700;letter-spacing:-0.01em;margin:0 0 2px;
+}
+.sub{color:var(--muted);font-size:13px;margin:0 0 16px}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+
+/* mode bar */
+.modes{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--panel);
+  border:1px solid var(--line);border-radius:6px;padding:4px;margin-bottom:14px}
+.modes button{
+  appearance:none;border:0;background:transparent;color:var(--muted);
+  font:inherit;font-size:13px;font-weight:600;padding:9px 2px;border-radius:4px;cursor:pointer}
+.modes button[aria-pressed="true"]{background:var(--base);color:var(--stock);box-shadow:inset 0 0 0 1px var(--line)}
+
+.scope{display:flex;gap:6px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.chip{
+  appearance:none;border:1px solid var(--line);background:transparent;color:var(--muted);
+  font:inherit;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--amber);color:var(--amber)}
+
+/* progress */
+.bar{height:3px;background:var(--line);border-radius:2px;overflow:hidden;margin-bottom:14px}
+.bar span{display:block;height:100%;background:var(--amber);width:0%;transition:width .2s ease}
+.meta{display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted);margin:-8px 0 12px}
+
+/* card */
+.card{
+  background:var(--stock);color:var(--ink);border-radius:4px;
+  padding:0 0 16px;overflow:hidden;box-shadow:0 1px 0 rgba(0,0,0,.35)}
+.card .band{
+  display:flex;align-items:baseline;gap:10px;
+  background:var(--stock2);border-bottom:1px solid rgba(11,19,23,.18);
+  padding:9px 16px}
+.card .band .num{font-size:13px;font-weight:700;letter-spacing:.02em}
+.card .band .chap{font-size:11.5px;color:#4A5A61;margin-left:auto}
+.card h2{font-size:20px;line-height:1.25;margin:14px 16px 10px;font-weight:700;letter-spacing:-0.01em}
+.card .prompt{font-size:17px;line-height:1.4;margin:16px 16px 12px;font-weight:600}
+ul.items{list-style:none;margin:0;padding:0 16px}
+ul.items li{
+  position:relative;padding:3px 0 3px 16px;font-size:15px;line-height:1.4;
+  border-bottom:1px solid rgba(11,19,23,.07)}
+ul.items li:last-child{border-bottom:0}
+ul.items li::before{content:"";position:absolute;left:2px;top:12px;width:5px;height:1.5px;background:#7A8A90}
+ul.items li.d1{padding-left:34px;font-size:14.3px;color:#2A3940}
+ul.items li.d1::before{left:20px}
+ul.items li.d2{padding-left:52px;font-size:13.8px;color:#3A4A50}
+ul.items li.d2::before{left:38px}
+ul.items li.flag{border-left:3px solid var(--amber);padding-left:13px;background:rgba(231,162,60,.10);
+  margin:6px 0;font-size:14px}
+ul.items li.flag::before{display:none}
+ul.items li.warn{border-left-color:var(--red);background:rgba(191,68,54,.10)}
+ul.items li b{font-weight:700}
+
+/* answers / buttons */
+.actions{display:grid;gap:8px;margin-top:14px}
+.actions.two{grid-template-columns:1fr 1fr}
+button.act{
+  appearance:none;font:inherit;font-weight:600;font-size:15px;
+  min-height:50px;border-radius:6px;cursor:pointer;
+  background:var(--panel);color:var(--stock);border:1px solid var(--line)}
+button.act.primary{background:var(--amber);color:#1A1204;border-color:var(--amber)}
+button.act.good{border-color:var(--ok);color:#A8D6BA}
+button.act.bad{border-color:var(--red);color:#E8A79E}
+button.act:active{transform:translateY(1px)}
+.choices{display:grid;gap:8px;margin-top:14px}
+button.choice{
+  appearance:none;font:inherit;font-size:15px;text-align:left;line-height:1.35;
+  padding:13px 14px;min-height:50px;border-radius:6px;cursor:pointer;
+  background:var(--panel);color:var(--stock);border:1px solid var(--line)}
+button.choice.right{border-color:var(--ok);background:rgba(94,158,120,.18)}
+button.choice.wrong{border-color:var(--red);background:rgba(191,68,54,.18)}
+button.choice:disabled{cursor:default;opacity:.85}
+.why{margin-top:12px;padding:12px 13px;border-left:3px solid var(--amber);
+  background:var(--panel);border-radius:0 6px 6px 0;font-size:14.5px;color:#D7DFD9}
+
+/* index + score */
+.index{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 0}
+.index .row{display:flex;gap:11px;align-items:baseline;padding:8px 14px;border-bottom:1px solid rgba(45,70,82,.6);font-size:14.5px}
+.index .row:last-child{border-bottom:0}
+.index .row .n{font-size:12.5px;color:var(--amber);min-width:44px}
+.index .row .c{color:var(--muted);font-size:12.5px;margin-left:auto}
+.score{font-size:40px;font-weight:700;letter-spacing:-0.02em;margin:4px 0 2px}
+.note{color:var(--muted);font-size:13.5px;margin:10px 0 0}
+a{color:var(--amber)}
+button:focus-visible,.chip:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>AIE Brief Trainer</h1>
+  <p class="sub">Ch 24 Team Insertion Brief &middot; Ch 25 Aircrew Brief</p>
+  <div class="modes" id="modes"></div>
+  <div class="scope" id="scope"></div>
+  <div id="app"></div>
+</div>
+<script>
+/* ---------- SOURCE DATA ---------- */
+/* prefixes: ">" indent 1, ">>" indent 2, "~" NOTE, "!" WARNING/CAUTION */
+const DATA = [
+{
+ id:"24", label:"Ch 24 — Team Brief",
+ title:"Alternate Insertion & Extraction Team Insertion Brief",
+ refs:["AFMAN 10-3511, Pararescue and Combat Rescue Officer Operations, 2 Dec 2020",
+       "DAFMAN 13-217, Drop Zone, Landing Zone, and Helicopter Landing Zone Ops, 22 Apr 2021",
+       "USSOCOM 350-6, Standards for Rotary Wing and Tiltrotor Infil/Exfil Training, 16 May 2019"],
+ paras:[
+ {n:"24.1", t:"Administrative", items:["Roll call","Time hack","Orient the room / planning products available","Flight Authorizations (FA) / PAX manifest signed","Go/No-Go, FCIFs, LOXs, ARMS, DNIF, currency products checked"]},
+ {n:"24.2", t:"Timeline", items:["Rehearsals, walk-thru","AIE aircrew brief","Load equipment/vehicles","Depart area","Drop dead time, bump plan","Duration of operation, RTB"]},
+ {n:"24.3", t:"Key Personnel", items:["Team Leader / ATL","AIE Master / Assistant AIE Master","Safetyman","Team Medic (primary/alternate)","Aircraft and equipment rigging duties","Intercom requirements","Equipment delivery","LZ Controller, Boatmaster, Safety Swimmer","LZ medical support, doctors, IDMT, etc. (primary/alternate)","Bundle duties/procedures (belaying eq etc.) — used when roper's equipment exceeds 60 lbs"]},
+ {n:"24.4", t:"Weather Forecast", items:["Air temp, precipitation %","Wind speed, direction","Cloud cover, visibility","Illumination %","Sunrise/sunset, moonrise/moonset","Sea state, water temp","Water visibility, depth","Wave height, length, direction","Currents — time, direction, speed in knots"]},
+ {n:"24.5", t:"Personal Individual Equipment (as required)", items:["Uniform","Helmet, eye protection, in/over ear protection (active listening devices)","Leather gloves w/ inserts","Alternate load line, tie down","Radios","Harness","Barrelman","Tie in (service approved with quick release at waist/sit-harness)","LBE (configured IAW OPORD/unit SOP), combat load (weapons, etc.)","Field gear for climate","Combat swimmer load, flotation device","NVGs, signaling devices","Medical kit, fanny pack","Locking/auto-locking carabiners","Chemlights/strobe"]},
+ {n:"24.6", t:"AIE Description", items:["Hoist","Rappel","Rope ladder","Fastrope","Helo-cast","T-duck","REDS","FRIES / SPIES","STABO"]},
+ {n:"24.7", t:"Aircraft", items:["Type of aircraft, number of aircraft involved, call signs","Tail numbers, location / spot","AIE device, CRRC pre-inspections","Load time, station time, take-off time","Flight duration, heading","Route checkpoints","Time on target"]},
+ {n:"24.8", t:"AIE Target Characteristics", items:["Type of exit (left, right, ramp)","Number of iterations","Stick order"]},
+ {n:"24.9", t:"LZ Information (show map)", items:["Name","Coordinates","Elevation, slope","Markings / features","Known hazards","Range procedures, requirements","Desired heading, alternate headings","Terrain / surface of landing area","Height of aircraft above target","Airspeed"]},
+ {n:"24.10", t:"Communications", items:["Aircraft intercom requirements","LZ callsign and frequencies","Boat support callsign and frequencies","Frequencies — aircraft, team, support, other","Radio type, quantity","Secure / non-secure","Team callsigns / numbers","Radio checks","Radio discipline","Waterproofing","Communications failure, no-comm procedures"]},
+ {n:"24.11", t:"Actions in Aircraft / Hand Signals", items:[
+   "Time warnings (IAW MAJCOM requirements)",
+   ">Don helmets, seat-belts on/off",
+   ">20-minute (optional: brief en-route location to troops)",
+   ">10-minute — issue time warning:",
+   ">>Check individual equipment, check team equipment",
+   ">>Open aircraft doors (as required)",
+   ">>Secure fastrope bar into position (as applicable)",
+   ">5-minute / 6-minute (AFSOC):",
+   ">>Issue time warning to troops",
+   ">>Position individual equipment, break chemlights",
+   ">>Extend FRIES bar (as applicable)",
+   ">1-minute:",
+   ">>Issue time warning to troops",
+   ">>Remove equipment tie downs / position loads (boats, REDS, other)",
+   ">>Remove restraining devices (short-final recommended, to reduce RM)",
+   ">30-seconds (optional): PID target / objective / LZ",
+   ">ROPES, ROPES, ROPES / BOATS, BOATS, BOATS:",
+   ">>AIE master checks hover height / airspeed / position",
+   ">>Points toward the exit and yells ROPES or BOATS",
+   ">>Deploy ropes / boats / equipment",
+   ">>GO — point toward the exit and yell GO",
+   "~NOTE: Soft-duck (helo ops) require personnel to GO on the BOAT or other prebriefed command.",
+   "~NOTE: To stop the stick, use a clenched fist signal. At night the aircrew or AIE master (or assistant) may use a red and green chemlight to affect the flow of personnel exiting."]},
+ {n:"24.12", t:"Team to Helicopter Signals", items:[
+   "OK / affirmative: thumbs up",
+   "Lower cable without device: climbing rope motion",
+   "Lower cable with device: arm extended overhead, fist clenched",
+   "Raise cable (day): thumbs up",
+   "Raise cable (night): chemlights, pumping motion",
+   "Ready for pick-up (day): arms waving",
+   "Ready for pick-up (night): strobe, buzzsaw, etc. (as briefed)",
+   "Deploy stokes litter: hands cupped, then arms outstretched",
+   "Deploy rope ladder: fists shoulder width apart, climbing motion",
+   "Move in/out: wave in/out",
+   "Cease operations: slashing motion across throat",
+   "Team recall (day): crewmember circling arm overhead, finger pointing skyward",
+   "Team recall (night): deployment of retrieval device, flash landing gear (as briefed)",
+   "Deploy medical kit: crossed wrists",
+   "Parachute near-by: pumping arm motion, point with opposite arm",
+   "Deploy back-up swimmer: breast stroke motion",
+   "Deploy raft: paddling motion",
+   "Sharks: hand clapping motion",
+   "Emergency: ignite MK-13/124 flare, or similar device (as briefed)"]},
+ {n:"24.13", t:"Hoist Operations", items:[
+   "Equipment / lighting",
+   ">1 x chemlight on hoist hook (night ops)",
+   "Stokes litter with tag line / chemlights (as required)",
+   ">2 x lights at head, 1 x light at foot (night ops)",
+   "Forest penetrator",
+   ">1 x light under each paddle (night ops)",
+   "Horse collar, strop (as required)",
+   "Locking carabiners (as required)",
+   "1 inch tubular nylon (as required)",
+   "Knife, duct tape"]},
+ {n:"24.14", t:"Hoist Characteristics", items:["Weight restrictions, maximum load allowed","Cable length, tag line length","Paddles / strap (forest penetrator)","Survivor / team loading and unloading","Grounding","Trees","Excess slack"]},
+ {n:"24.15", t:"Emergency Procedures (Hoist)", items:[
+   "Hung tag line:",
+   ">Immediately stop stick",
+   ">Attempt to free",
+   ">Signal for lowering device if it cannot be freed",
+   "Shock loading / cable shearing:",
+   ">Signals to crew chief / pilot",
+   ">Flash landing lights",
+   ">Shear, ditch opposite of team location",
+   "!WARNING: During training missions, terminate live hoisting immediately at the first indication of cable shock loading.",
+   "~NOTE: Ensure cable slack is held to the minimum necessary to perform the recovery."]},
+ {n:"24.16", t:"Fastrope Operations", items:[
+   "Equipment:",
+   ">Fast rope (length appropriate to mission)",
+   ">Release device or fast rope bag (when utilized, 1 x chemlight at each attachment point)",
+   ">2 x chemlights at the bottom rope",
+   ">1 x chemlight 10 ft from bottom of rope",
+   ">1 x chemlight at the top of rope",
+   ">Equipment rigged for belay (as required)",
+   ">Belay rope (length appropriate to mission / load)",
+   ">Carabiners (as required)",
+   ">6 ft length of 1 inch tubular webbing (as required)",
+   ">Friction device (as required)",
+   ">FRIES bar inspection",
+   ">Weight / personnel restrictions",
+   "~NOTE: Maximum individual weight of gear = AC dependent. Includes ropes, helmet, LBE, weapon, and rucksack.",
+   "Emergency procedures:",
+   ">Go around / abort",
+   ">Unsafe drift / premature lift-off: lock in (if on rope), stop stick, get back on site / lower rope to ground, continue operation",
+   ">Hung rope: ensure ropers are clear, descend, release rope",
+   ">Hung roper: roper maintains three points of contact and does not attempt to free self; AIE master will attempt to free roper if safe to do so; if unable, AC will descend to the ground",
+   "!WARNING: Being a hung roper is often the result of failing to release the aircraft tie-in. If hung, the roper makes no attempt to free self and maintains a firm grip on the rope with both hands and feet until the AIE master frees the roper or the aircraft descends.",
+   ">Loss of aircraft control or power: stop stick or immediately exit if safe to do so; if unable to exit, immediately strap in and prepare for crash landing / ditching",
+   ">Aircraft under fire: stop stick; prepare for immediate team pick-up, or execute EPA"]},
+ {n:"24.17", t:"Rappel Operations", items:[
+   "Characteristics:",
+   ">Weight restrictions",
+   ">Rope length, rope type",
+   ">Type of descender",
+   ">Rope deployment (free bag, bagged on roper)",
+   ">Night ops (chemlights on rappel bag)",
+   "Emergency procedures:",
+   ">Oscillation / drift / premature lift-off: stop stick, lock-in, wait for aircraft to move back over site, continue descent",
+   ">Hung rope: stop stick; stop descent, lock-in, prepare for aircraft descent; once on ground dismount and move away",
+   ">Loss of aircraft control / power: stop stick; descend as rapidly as possible; move from beneath aircraft",
+   ">Aircraft under fire: stop stick; attempt to stop descent, lock-in and prepare for flight; if an immediate LZ is not available prepare for rapid descent and execute EPA",
+   "~NOTE: If team cannot dismount from device, stop descent, lock-in and prepare for flight or rope release."]},
+ {n:"24.18", t:"Rope Ladder Operations", items:[
+   "Equipment — ladders:",
+   ">Weight restrictions (H-60 = 3 per)",
+   ">Ladder length and type",
+   ">Carabiners, restraint harnesses",
+   ">Knife, duct tape",
+   ">Chemlights: 2 x at the sides of bottom rung; 2 x at sides of 5th rung from the bottom (5 feet up)"]},
+ {n:"24.19", t:"Rope Ladder Emergency Procedures", items:[
+   "Oscillation / drift / premature lift-off: stop stick, lock-in, wait for aircraft to move back over site, continue descent",
+   "Hung ladder: stop stick; stop descent, lock-in and prepare for aircraft descent; once on ground, dismount and move away",
+   "Loss of aircraft control / power: stop stick; descend as rapidly as possible; move from beneath aircraft; if unable to dismount ladder, lock-in and prepare for flight / crash landing",
+   "Aircraft under fire: stop stick; attempt to stop descent, lock-in and prepare for flight; if an immediate LZ is not available prepare for rapid descent and execute EPA"]},
+ {n:"24.20", t:"Helo Cast Operations", items:[
+   "Cast altitude and speed",
+   "Type of aircraft, number, formation",
+   "Number of sticks, load order, seating arrangement, exit order",
+   "Number of passes",
+   "Water depth and obstacle marking (minimum water depth is 10 feet)",
+   "Sea states",
+   "Location and marking of safety boats",
+   "Safety boat call sign / frequencies",
+   "Cast and recovery rehearsal (as applicable)",
+   "Abort procedures / signals",
+   "Pilot and AIE master briefing",
+   "Positioning and securing of equipment",
+   "Review of jump commands, hand and arm signals, and signals for swimmers to use once in the water",
+   "Movement in aircraft (when permitted)",
+   "AIE master inspection of personnel and equipment prior to boarding the aircraft",
+   "Actions in the aircraft: secure seat belts or safety straps and equipment; watch for AIE master signals; move as directed",
+   "Pre-cast: release seat belt or safety strap; position equipment; receive AIE master signals; throw ruck, bundle, stokes prior to exit; exit aircraft",
+   "~NOTE: Maximum altitude is 10 feet; maximum speed is 10 knots actual ground speed.",
+   "~NOTE: Sea state is considered as part of the risk assessment. For training operations, Wind Force (Beaufort) 4 is the recommended limit (DAFMAN 13-217, Table A2.1).",
+   "~NOTE: The deploying team will exit only on the AIE Master's command.",
+   "After exiting helicopter: assume proper body position for water entry; signal OK (thumbs up); don swimming gear; secure equipment / accountability of personnel and equipment; execute remainder of operation",
+   "Recovery: assume correct swimmer alignment, PZ posture; follow procedures for recovery system used; if a rope ladder is used, snare ladder with arm and stabilize, or follow ascending procedures; board aircraft, secure patient, secure seat belts or safety straps; accountability of personnel and equipment"]},
+ {n:"24.21", t:"T-Duck Operations", items:[
+   "Characteristics:",
+   ">Weight / CG restrictions",
+   ">Maximum speed / height (5 knots ground speed, 20 feet)",
+   ">High seas",
+   ">5-minute call: belay man on intercom; inflate cones",
+   "Procedures:",
+   ">Team assists deploying boat",
+   ">Team deploys opposite side (fast rope / helo cast)",
+   ">Individuals give thumbs and move to package",
+   ">Belay man strikes system, throws rope into water, deploys",
+   ">Team inflates boat and departs",
+   "!CAUTION: If equipment is to be belayed into water, gain control of the package then disconnect the belay rope. The belay man will recover the rope and belay equipment to the team then strike the system and deploy. Must have a 5 lb weight attached to the rope if the rope is to be recovered."]},
+ {n:"24.22", t:"FRIES / SPIES", items:[
+   "Equipment:",
+   ">FRIES/SPIES rope",
+   ">Two 9 ft, type 13 cargo suspension slings",
+   ">FRIES/SPIES harness w/ safety sling (12 ft of 1 inch tubular 7/16 rope)",
+   ">Type IV links",
+   ">Chemlights (3 per rope)",
+   ">Radio (required for low man)",
+   "Suspension equipment: harness; suspension rope; deployment bag; doughnut ring anchoring device; safety sling; carabiners",
+   "Characteristics:",
+   ">Weight restrictions / airspeeds (will not exceed 70 KIA, or 50 KIAS in cold weather)",
+   ">Rope length / type",
+   ">Rope center of gravity",
+   ">Considerations",
+   "Procedures:",
+   ">Keep arch position to stay stable in flight",
+   ">Keep feet and knees together",
+   ">Unhook and move to briefed position (3 or 9 o'clock) keeping rope taut",
+   "Hand and arm signals:",
+   ">Thumbs-up = secure and ready for pick-up",
+   ">UP = arm moved up and down in a vertical motion",
+   ">DOWN = arm moved side to side in a horizontal motion",
+   ">Emergency down = both hands on head",
+   ">Clenched fist = hold",
+   "~NOTE: Night operations — same as day except with a red chemlight or as pre-briefed."]},
+ {n:"24.23", t:"Emergency Procedures (FRIES/SPIES)", items:[
+   "Oscillation / premature lift-off: stop stick; lock-in; wait for aircraft to move back over site; continue operation",
+   "Entangled ropes: prepare for aircraft descent, prepare for PLF; move from beneath the aircraft; crew will drop/cut rope when all personnel are off",
+   "Loss of aircraft control / power: prepare for PLF, move from beneath aircraft",
+   "~NOTE: If team cannot dismount from device, stop descent, lock-in and prepare for flight drop release."]},
+ {n:"24.24", t:"Risk Management", items:["Mission phases","Hazards, controls implemented, residual risk"]},
+ {n:"24.25", t:"Timeline", items:["Restate the timeline"]},
+ {n:"24.26", t:"Questions", items:["Take questions"]},
+ {n:"24.27", t:"Next Critical", items:["Time","Uniform","Location"]}
+ ]
+},
+{
+ id:"25", label:"Ch 25 — Aircrew Brief",
+ title:"Alternate Insertion & Extraction Aircrew Brief",
+ refs:["AFMAN 10-3511, Pararescue and Combat Rescue Officer Operations, 2 Dec 2020",
+       "AFMAN 11-202V2, Flight Operations, 10 June 2020",
+       "DAFMAN 13-217, Drop Zone, Landing Zone, and Helicopter Landing Zone Ops, 22 Apr 2021",
+       "USSOCOM 350-6, Standards for Rotary Wing and Tiltrotor Infil/Exfil Training, 16 May 2019"],
+ paras:[
+ {n:"25.1", t:"Administrative", items:["Roll call","Time hack","Orient the room / planning products available","Flight Authorizations (FA) / PAX manifest signed","Go/No-Go, FCIFs, LOXs, ARMS, DNIF, currency products checked"]},
+ {n:"25.2", t:"Key Personnel (IAW MAJCOM requirements)", items:["Team Leader / Commander","AIE Master","Boat Driver (IAW AFI 10-3503, Ch 11)","Transportation","Additional personnel / duties"]},
+ {n:"25.3", t:"Aircraft Information", items:["Number of aircraft involved","Tail numbers / spots / call signs (lead, trail)","Frequencies (primary, alternate)"]},
+ {n:"25.4", t:"Type of Insertion / Extraction", items:[
+   "Hoist:",
+   ">Climbing harness",
+   ">Forest penetrator",
+   ">Rescue net",
+   ">Rescue strop / horse collar",
+   ">Stokes litter",
+   ">Barrelman procedures",
+   ">Tag line",
+   "Fast rope (length)","Rappel (length)","Rope ladder","Helo-cast","T-duck","REDS","FRIES / SPIES"]},
+ {n:"25.5", t:"Sequence of Events", items:[
+   "Type of exit (left/right door, ramp)",
+   "Suggested approach / departure",
+   "Survivor line-up / approach",
+   "Altitude, airspeed, pattern, hover height",
+   "Timing calls (20, 10, 5, 1)",
+   ">AFSOC time calls (20, 10, 6, 1)",
+   "Clearance to deploy (ROPES, ROPES, ROPES / BOATS, BOATS, BOATS)"]},
+ {n:"25.6", t:"Personnel / Team Involved", items:["Number of team members involved","Team Leader, Assistant Team Leader","Team call sign (team / individual)","Team frequencies (primary/alternate)","AIE Master, Assistant AIE Master, Safetyman","Team Medic (primary/alternate)","Aircraft and equipment rigging duties / responsibilities","Intercom requirements","Equipment delivery","Bundle duties/procedures (belaying eqpt etc.) — used when ropers eqpt exceeds 60 lbs","Duties and responsibilities"]},
+ {n:"25.7", t:"LZ Information (show map)", items:["Name","Coordinates","Elevation, slope","Markings, features","Known hazards","Range procedures, requirements","Desired heading, alternate headings","Terrain, surface of landing area","Height of aircraft above target","Airspeed","Alternate LZ"]},
+ {n:"25.8", t:"Communications", items:[
+   "LZ controller: call sign; frequencies (primary/alternate)",
+   "Safety boat: call sign; frequencies (primary/alternate)",
+   "Safety swimmers",
+   "LZ medical support: doctors; IDMT, etc. (primary/alternate)"]},
+ {n:"25.9", t:"Team to Helicopter Signals", items:[
+   "OK / affirmative: thumbs up",
+   "Lower cable without device: climbing rope motion",
+   "Lower cable with device: arm extended overhead, fist clenched",
+   "Raise cable (day): thumbs up",
+   "Raise cable (night): chemlights, pumping motion",
+   "Ready for pick-up (day): arms waving",
+   "Ready for pick-up (night): strobe, buzzsaw, etc. (as briefed)",
+   "Deploy stokes litter: hands cupped, then arms outstretched",
+   "Deploy rope ladder: fists shoulder width apart, climbing motion",
+   "Move in/out: wave in/out",
+   "Cease operations: slashing motion across throat",
+   "Team recall (day): crewmember circling arm overhead, finger pointing skyward",
+   "Team recall (night): deployment of retrieval device, flash landing gear (as briefed)",
+   "Deploy medical kit: crossed wrists",
+   "Parachute near-by: crossed fists, pumping arm, point with either arm",
+   "Deploy back-up swimmer: breast stroke motion",
+   "Deploy raft: paddling motion",
+   "Sharks: hand clapping motion",
+   "Emergency: ignite MK-13/124 flare, or similar device (as briefed)",
+   "~NOTE: 25.9 item 15 differs from 24.12 item 15 — crossed fists here, pumping arm motion with opposite arm in the team brief."]},
+ {n:"25.10", t:"Aircrew Duties (Flight Engineer / Gunner / Safetyman)", items:[
+   "Aircraft and equipment rigging",
+   "Safetyman duties",
+   "Keep working area clear of non-essential equipment",
+   "Relay visual signals:",
+   ">Course corrections",
+   ">Clearance to deploy (ROPES, ROPES, ROPES / BOATS, BOATS, BOATS)",
+   ">No drop",
+   ">Advise pilot on exit of deployed personnel",
+   ">Advise pilot when clear for forward flight",
+   ">Chemlight activation",
+   ">Suspected shock loading",
+   "!WARNING: When unsafe conditions are encountered, stop any additional team members from deploying using appropriate hand signals. Make no attempt to physically stop a person that is in the act of deploying as this may cause the person to lose grip of the rope and increase the probability of injury.",
+   "~NOTE: The deploying team will exit only on the AIE Master's command."]},
+ {n:"25.11", t:"Emergency Procedures", items:[
+   "Go around / abort",
+   "Oscillation / drift / premature lift-off: stop stick; lock-in; wait for aircraft to move back over site; continue descent",
+   "~NOTE: If team cannot dismount from device, stop descent, lock-in and prepare for flight or rope release, prepare for PLF.",
+   "Hung rope: stop stick; stop descent, lock-in; prepare for PLF; prepare for aircraft descent; once on ground, dismount and move away",
+   "Loss of aircraft control / power: stop stick; descend as rapidly as possible; prepare for PLF; move from beneath aircraft",
+   "Hung tag line: immediately stop stick; attempt to free; signal for lowering device if cannot be freed",
+   "Shock loading / cable shearing: signals to crew chief / pilot; flash landing lights; shear, ditch opposite of team location",
+   "Aircraft under fire: stop stick; attempt to stop descent, lock-in and prepare for flight; if an immediate LZ is not available prepare for rapid descent and execute EPA",
+   "!WARNING: During training missions, terminate live hoisting immediately at the first indication of cable shock loading.",
+   "~NOTE: Ensure cable slack is held to the minimum necessary to perform the recovery."]},
+ {n:"25.12", t:"Contingency / Bump Plan", items:["Single ship, multiple lifts, elevators, etc."]},
+ {n:"25.13", t:"Risk Management", items:["Mission phases","Hazards, controls implemented, residual risk"]},
+ {n:"25.14", t:"Medical Plan / Malfunction / Mishap / Injury", items:[
+   "PACE",
+   "Life, limb, eyesight and other injuries",
+   "Transport vehicle / aircraft",
+   "Medical treatment facility and capabilities",
+   "Mishap: type; reporting; condition of personnel / equipment"]},
+ {n:"25.15", t:"Timeline", items:["Comm check","Take-off / time on target","Return to base / drop dead"]},
+ {n:"25.16", t:"Questions", items:["Take questions"]}
+ ]
+}];
+
+/* ---------- WRITTEN QUIZ ITEMS ---------- */
+const QUIZ = [
+{c:"24",q:"Minimum water depth for helo cast operations?",o:["10 feet","6 feet","15 feet","20 feet"],a:0,w:"24.20 — water depth and obstacle marking; minimum water depth is 10 feet."},
+{c:"24",q:"Maximum altitude and speed for helo cast?",o:["10 feet, 10 knots actual ground speed","20 feet, 5 knots","10 feet, 20 knots","15 feet, 10 knots"],a:0,w:"24.20 NOTE. Do not confuse with T-duck: 20 feet, 5 knots."},
+{c:"24",q:"Recommended sea state limit for training helo cast?",o:["Wind Force (Beaufort) 4","Sea State 3","Wind Force 6","Sea State 2"],a:0,w:"24.20 NOTE — DAFMAN 13-217, Wind/Sea State Observation Chart, Table A2.1."},
+{c:"24",q:"T-duck maximum speed and height?",o:["5 knots ground speed, 20 feet","10 knots, 10 feet","5 knots, 10 feet","10 knots, 20 feet"],a:0,w:"24.21 Characteristics."},
+{c:"24",q:"What happens on the 5-minute call for T-duck?",o:["Belay man on intercom; inflate cones","Strike the system; throw rope","Inflate boat; team departs","Position equipment; break chemlights"],a:0,w:"24.21 — the 5-minute call is belay man on intercom and inflate cones."},
+{c:"24",q:"If the T-duck belay rope is to be recovered, what must be attached to it?",o:["A 5 lb weight","A 10 lb weight","A float collar","A doughnut ring"],a:0,w:"24.21 CAUTION — 5 lb weight attached to the rope if the rope is to be recovered."},
+{c:"24",q:"Bundle duties and belaying procedures are used when the roper's equipment exceeds:",o:["60 lbs","45 lbs","80 lbs","100 lbs"],a:0,w:"24.3 item 10 (and 25.6 item 10)."},
+{c:"24",q:"Rope ladder weight restriction on the H-60?",o:["3 per ladder","2 per ladder","4 per ladder","AC dependent"],a:0,w:"24.18 — Weight restrictions (H-60 = 3 per)."},
+{c:"24",q:"Rope ladder chemlight configuration?",o:["2 at sides of bottom rung, 2 at sides of 5th rung (5 ft up)","1 at bottom rung, 1 at top","2 at bottom rung only","3 per ladder, evenly spaced"],a:0,w:"24.18 Equipment — ladders."},
+{c:"24",q:"Fastrope chemlights on the rope itself?",o:["2 at bottom, 1 at 10 ft from bottom, 1 at top","1 at bottom, 1 at top","3 per rope","2 at top, 2 at bottom"],a:0,w:"24.16 — plus 1 chemlight at each attachment point when a release device or rope bag is used."},
+{c:"24",q:"Night lighting for the stokes litter on the hoist?",o:["2 lights at head, 1 light at foot","1 light at head, 1 at foot","2 at head, 2 at foot","1 light under each paddle"],a:0,w:"24.13 — one light under each paddle is the forest penetrator; the hoist hook gets 1 chemlight."},
+{c:"24",q:"FRIES/SPIES airspeed restriction?",o:["Will not exceed 70 KIA, or 50 KIAS in cold weather","Will not exceed 50 KIAS at all times","Will not exceed 70 KIAS, or 60 in cold weather","AC dependent only"],a:0,w:"24.22 Characteristics."},
+{c:"24",q:"FRIES/SPIES chemlights?",o:["3 per rope","2 per rope","1 per attachment point","4 per rope"],a:0,w:"24.22 Equipment. The radio is required for the low man."},
+{c:"24",q:"FRIES/SPIES harness safety sling is made from:",o:["12 ft of 1 inch tubular 7/16 rope","9 ft type 13 sling","6 ft of 1 inch tubular webbing","1 inch tubular nylon, length as required"],a:0,w:"24.22 Equipment. The two 9 ft slings are type 13 cargo suspension slings."},
+{c:"24",q:"On SPIES, where do you move after unhooking?",o:["3 or 9 o'clock, keeping rope taut","6 o'clock, rope slack","12 o'clock, rope taut","Wherever the low man directs"],a:0,w:"24.22 Procedures — also keep the arch position and feet and knees together."},
+{c:"24",q:"SPIES hand signal for emergency down?",o:["Both hands on head","Clenched fist","Arm side to side horizontally","Slashing motion across throat"],a:0,w:"24.22 — clenched fist is hold; arm side to side horizontally is DOWN."},
+{c:"24",q:"Standard time calls versus AFSOC time calls?",o:["20, 10, 5, 1 versus 20, 10, 6, 1","20, 10, 5, 1 versus 15, 10, 5, 1","20, 10, 6, 1 versus 20, 10, 5, 1","10, 5, 1 versus 20, 10, 5, 1"],a:0,w:"24.11 and 25.5 — AFSOC uses a 6-minute call in place of the 5."},
+{c:"24",q:"What happens at the 10-minute warning?",o:["Check individual and team equipment; open doors as required; secure fastrope bar","Break chemlights; extend FRIES bar","Remove tie downs; remove restraining devices","PID the target/objective/LZ"],a:0,w:"24.11 — chemlights and FRIES bar are the 5/6-minute call."},
+{c:"24",q:"What happens at the 1-minute warning?",o:["Remove equipment tie downs / position loads; remove restraining devices","Position individual equipment, break chemlights","Open aircraft doors","PID target/objective/LZ"],a:0,w:"24.11 — removing restraining devices on short final is recommended to reduce risk."},
+{c:"24",q:"The optional 30-second call is used for:",o:["PID target / objective / LZ","Issuing the final time warning","Extending the FRIES bar","Breaking chemlights"],a:0,w:"24.11 item f."},
+{c:"24",q:"How do you stop the stick?",o:["Clenched fist signal; red/green chemlight at night","Slashing motion across throat","Both hands on head","Arms waving"],a:0,w:"24.11 NOTE. A slashing motion across the throat is cease operations."},
+{c:"24",q:"On soft-duck helo ops, personnel GO on:",o:["The BOAT, or other prebriefed command","The GO command only","ROPES, ROPES, ROPES","The AIE master's thumbs up"],a:0,w:"24.11 NOTE."},
+{c:"24",q:"A hung roper should:",o:["Maintain three points of contact and make no attempt to free self","Cut the tie-in and drop clear","Climb back to the aircraft","Signal the pilot to descend, then release"],a:0,w:"24.16 — AIE master frees the roper if safe; if unable, the AC descends to the ground. Being hung is often caused by failing to release the aircraft tie-in."},
+{c:"24",q:"Cease operations signal?",o:["Slashing motion across throat","Crossed wrists","Clenched fist","Hand clapping motion"],a:0,w:"24.12 / 25.9. Crossed wrists is deploy medical kit; hand clapping is sharks."},
+{c:"24",q:"Deploy back-up swimmer signal?",o:["Breast stroke motion","Paddling motion","Hand clapping motion","Arms waving"],a:0,w:"24.12 / 25.9. Paddling motion is deploy raft."},
+{c:"24",q:"Lower cable WITH device?",o:["Arm extended overhead, fist clenched","Climbing rope motion","Thumbs up","Chemlights, pumping motion"],a:0,w:"24.12 — climbing rope motion is lower cable without device."},
+{c:"24",q:"Team recall (day)?",o:["Crewmember circling arm overhead, finger pointing skyward","Deployment of retrieval device, flash landing gear","Arms waving","Wave in/out"],a:0,w:"24.12 — the second option is team recall at night."},
+{c:"24",q:"Emergency signal to the helicopter?",o:["Ignite MK-13/124 flare or similar device","Strobe or buzzsaw","Both hands on head","Slashing motion across throat"],a:0,w:"24.12 item 19. Strobe/buzzsaw is ready for pick-up at night."},
+{c:"24",q:"During training, at the first indication of cable shock loading you:",o:["Terminate live hoisting immediately","Signal the crew chief and continue","Shear the cable","Flash landing lights and reattempt"],a:0,w:"24.15 WARNING (repeated in 25.11)."},
+{c:"24",q:"Entangled ropes on FRIES/SPIES — who cuts the rope?",o:["The crew, once all personnel are off","The low man","The AIE master, immediately","The roper, using his knife"],a:0,w:"24.23 — prepare for aircraft descent and PLF, move from beneath the aircraft, crew drops/cuts the rope when all personnel are off."},
+{c:"24",q:"Which is NOT listed under 24.6 AIE Description?",o:["Parachute (static line)","STABO","REDS","T-duck"],a:0,w:"24.6 lists hoist, rappel, rope ladder, fastrope, helo-cast, T-duck, REDS, FRIES/SPIES, STABO."},
+{c:"24",q:"Final paragraph of the Team Brief?",o:["Next Critical — time, uniform, location","Questions","Risk Management","Timeline"],a:0,w:"24.27. The order at the end is Risk Management, Timeline, Questions, Next Critical."},
+{c:"25",q:"Which reference appears in the Aircrew Brief but not the Team Brief?",o:["AFMAN 11-202V2, Flight Operations","AFMAN 10-3511","DAFMAN 13-217","USSOCOM 350-6"],a:0,w:"25 references add AFMAN 11-202V2, Flight Operations, 10 June 2020."},
+{c:"25",q:"Boat driver requirements come from:",o:["AFI 10-3503, Ch 11","AFMAN 10-3511, Ch 24","DAFMAN 13-217","USSOCOM 350-6"],a:0,w:"25.2 Key Personnel."},
+{c:"25",q:"Contingency / Bump Plan is its own paragraph in which brief?",o:["Aircrew Brief (25.12)","Team Brief (24.12)","Both","Neither"],a:0,w:"In the Team Brief the bump plan sits inside 24.2 Timeline."},
+{c:"25",q:"Which LZ Information item appears only in the Aircrew Brief?",o:["Alternate LZ","Known hazards","Elevation, slope","Airspeed"],a:0,w:"25.7 carries 11 items; 24.9 carries the same 10 without Alternate LZ."},
+{c:"25",q:"First item of the Medical Plan paragraph?",o:["PACE","Transport vehicle / aircraft","Mishap type","Life, limb, eyesight"],a:0,w:"25.14 — PACE, then life/limb/eyesight and other injuries, transport, MTF and capabilities, mishap."},
+{c:"25",q:"If a team member is in the act of deploying under unsafe conditions, the aircrew:",o:["Makes no attempt to physically stop him","Physically restrains him at the door","Cuts the rope","Signals the pilot to climb"],a:0,w:"25.10 WARNING — physically stopping him may cause loss of grip on the rope. Stop additional members with hand signals."},
+{c:"25",q:"Who commands the exit?",o:["The AIE Master","The pilot","The team leader","The safetyman"],a:0,w:"NOTE in 24.20 and 25.10 — the deploying team exits only on the AIE Master's command."},
+{c:"25",q:"Parachute near-by, as written in 25.9?",o:["Crossed fists, pumping arm, point with either arm","Pumping arm motion, point with opposite arm","Crossed wrists","Arms waving"],a:0,w:"25.9 says crossed fists / point with either arm; 24.12 says pumping arm motion / point with the opposite arm. Know which brief you are reading from."}
+];
+
+/* ---------- STATE ---------- */
+const S = {mode:"spine", scope:"24", q:null, i:0, hits:0, miss:[], queue:[], done:0, showIndex:false, answered:false};
+const app = document.getElementById("app");
+const modesEl = document.getElementById("modes");
+const scopeEl = document.getElementById("scope");
+
+const MODES = [["spine","Spine"],["cards","Cards"],["quiz","Quiz"],["brief","Brief it"]];
+const SCOPES = [["24","Ch 24"],["25","Ch 25"],["both","Both"]];
+
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function chap(id){return DATA.find(d=>d.id===id);}
+function paras(){
+  if(S.scope==="both") return DATA.flatMap(d=>d.paras.map(p=>({...p,cid:d.id})));
+  return chap(S.scope).paras.map(p=>({...p,cid:S.scope}));
+}
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function pct(n,d){return d?Math.round(100*n/d):0;}
+
+/* ---------- SHARED RENDER ---------- */
+function itemsHtml(items){
+  return "<ul class='items'>"+items.map(raw=>{
+    let s=raw, cls="";
+    if(s[0]==="~"){return "<li class='flag'>"+esc(s.slice(1))+"</li>";}
+    if(s[0]==="!"){return "<li class='flag warn'>"+esc(s.slice(1))+"</li>";}
+    if(s.slice(0,2)===">>"){cls="d2";s=s.slice(2);}
+    else if(s[0]===">"){cls="d1";s=s.slice(1);}
+    return "<li class='"+cls+"'>"+esc(s)+"</li>";
+  }).join("")+"</ul>";
+}
+function cardHtml(p,body){
+  const c = p.cid==="24" ? "Team Brief" : "Aircrew Brief";
+  return "<div class='card'><div class='band'><span class='num mono'>"+esc(p.n)+"</span>"+
+    "<span class='chap'>"+c+"</span></div>"+body+"</div>";
+}
+function bar(n,d){return "<div class='bar'><span style='width:"+pct(n,d)+"%'></span></div>";}
+function metaLine(l,r){return "<div class='meta'><span>"+esc(l)+"</span><span>"+esc(r)+"</span></div>";}
+
+function drawChrome(){
+  modesEl.innerHTML = MODES.map(([k,l])=>
+    "<button data-m='"+k+"' aria-pressed='"+(S.mode===k)+"'>"+l+"</button>").join("");
+  scopeEl.innerHTML = SCOPES.map(([k,l])=>
+    "<button class='chip' data-s='"+k+"' aria-pressed='"+(S.scope===k)+"'>"+l+"</button>").join("")
+    + "<button class='chip' data-reset='1'>Restart</button>";
+}
+modesEl.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;S.mode=b.dataset.m;reset();});
+scopeEl.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+  if(b.dataset.reset){reset();return;} S.scope=b.dataset.s;reset();});
+
+function reset(){
+  S.i=0;S.hits=0;S.miss=[];S.done=0;S.answered=false;S.showIndex=false;S.q=null;
+  const ps=paras();
+  if(S.mode==="cards") S.queue=shuffle(ps);
+  else if(S.mode==="brief") S.queue=ps.slice();
+  else if(S.mode==="quiz") S.queue=shuffle(buildQuiz());
+  else S.queue=shuffle(buildSpine());
+  render();
+}
+
+/* ---------- SPINE DRILL ---------- */
+function buildSpine(){
+  const out=[];
+  DATA.forEach(d=>{
+    if(S.scope!=="both" && d.id!==S.scope) return;
+    const ps=d.paras;
+    ps.forEach((p,idx)=>{
+      const others=shuffle(ps.filter(x=>x.n!==p.n)).slice(0,3);
+      out.push({q:"In the "+(d.id==="24"?"Team":"Aircrew")+" Brief, what is paragraph "+p.n+"?",
+        o:shuffle([p.t,...others.map(x=>x.t)]),a:p.t,
+        w:p.n+" — "+p.t+". Position "+(idx+1)+" of "+ps.length+"."});
+      out.push({q:"Which paragraph covers " + p.t + "?",
+        o:shuffle([p.n,...others.map(x=>x.n)]),a:p.n,
+        w:p.n+" — "+p.t+"."});
+      if(idx<ps.length-1){
+        const nx=ps[idx+1];
+        const wrong=shuffle(ps.filter(x=>x.n!==nx.n&&x.n!==p.n)).slice(0,3);
+        out.push({q:"What comes immediately after "+p.n+" "+p.t+"?",
+          o:shuffle([nx.t,...wrong.map(x=>x.t)]),a:nx.t,
+          w:"After "+p.n+" comes "+nx.n+" "+nx.t+"."});
+      }
+    });
+  });
+  return out;
+}
+
+/* ---------- QUIZ ---------- */
+function buildQuiz(){
+  const pool = S.scope==="both" ? QUIZ : QUIZ.filter(x=>x.c===S.scope);
+  return pool.map(x=>({q:x.q,o:shuffle(x.o),a:x.o[x.a],w:x.w}));
+}
+
+/* ---------- RENDER ---------- */
+function render(){
+  drawChrome();
+  if(S.mode==="cards") return renderCards();
+  if(S.mode==="brief") return renderBrief();
+  return renderMC();
+}
+
+function renderMC(){
+  const total=S.queue.length;
+  if(S.i>=total) return renderScore(S.hits,total,S.mode==="spine"?"Spine drill":"Quiz");
+  const item=S.queue[S.i];
+  let extra="";
+  if(S.mode==="spine"){
+    extra = "<div class='actions'><button class='act' data-idx='1'>"+(S.showIndex?"Hide the index":"Show the index")+"</button></div>";
+  }
+  app.innerHTML = bar(S.i,total)+metaLine((S.i+1)+" of "+total, S.hits+" correct")+
+    "<div class='card'><p class='prompt'>"+esc(item.q)+"</p></div>"+
+    "<div class='choices'>"+item.o.map(o=>"<button class='choice' data-o=\""+esc(o).replace(/"/g,"&quot;")+"\">"+esc(o)+"</button>").join("")+"</div>"+
+    "<div id='after'></div>"+extra+
+    (S.showIndex?indexHtml():"");
+  app.querySelectorAll(".choice").forEach(b=>b.addEventListener("click",()=>answer(b,item)));
+  const ix=app.querySelector("[data-idx]");
+  if(ix) ix.addEventListener("click",()=>{S.showIndex=!S.showIndex;render();});
+}
+
+function answer(btn,item){
+  if(S.answered) return;
+  S.answered=true;
+  const picked=btn.dataset.o;
+  const right = picked===item.a;
+  app.querySelectorAll(".choice").forEach(b=>{
+    b.disabled=true;
+    if(b.dataset.o===item.a) b.classList.add("right");
+  });
+  if(right) S.hits++; else btn.classList.add("wrong");
+  const after=document.getElementById("after");
+  after.innerHTML = "<div class='why'>"+esc(item.w)+"</div>"+
+    "<div class='actions'><button class='act primary' id='next'>Next</button></div>";
+  document.getElementById("next").addEventListener("click",()=>{S.i++;S.answered=false;render();});
+  document.getElementById("next").focus();
+}
+
+function renderCards(){
+  const total=S.queue.length+S.done;
+  if(!S.queue.length) return renderScore(S.done,total,"Cards");
+  const p=S.queue[0];
+  app.innerHTML = bar(S.done,total)+metaLine(S.queue.length+" left", S.done+" cleared")+
+    cardHtml(p,"<h2>"+esc(p.t)+"</h2><p style='margin:0 16px;color:#4A5A61;font-size:14px'>"+
+      p.items.filter(x=>x[0]!=="~"&&x[0]!=="!").length+" items to call</p>")+
+    "<div class='actions'><button class='act primary' id='flip'>Show the contents</button></div>";
+  document.getElementById("flip").addEventListener("click",()=>{
+    app.innerHTML = bar(S.done,total)+metaLine(S.queue.length+" left", S.done+" cleared")+
+      cardHtml(p,"<h2>"+esc(p.t)+"</h2>"+itemsHtml(p.items))+
+      "<div class='actions two'><button class='act bad' id='again'>Again</button>"+
+      "<button class='act good' id='got'>Got it</button></div>";
+    document.getElementById("again").addEventListener("click",()=>{
+      const c=S.queue.shift();S.queue.push(c);render();});
+    document.getElementById("got").addEventListener("click",()=>{
+      S.queue.shift();S.done++;render();});
+  });
+}
+
+function renderBrief(){
+  const total=S.queue.length;
+  if(S.i>=total) return renderBriefScore();
+  const p=S.queue[S.i];
+  app.innerHTML = bar(S.i,total)+metaLine("Paragraph "+(S.i+1)+" of "+total, S.hits+" clean")+
+    cardHtml(p,"<h2>"+esc(p.t)+"</h2><p style='margin:0 16px;color:#4A5A61;font-size:14px'>"+
+      "Brief this paragraph out loud, then check yourself.</p>")+
+    "<div class='actions'><button class='act primary' id='reveal'>Check the items</button></div>";
+  document.getElementById("reveal").addEventListener("click",()=>{
+    app.innerHTML = bar(S.i,total)+metaLine("Paragraph "+(S.i+1)+" of "+total, S.hits+" clean")+
+      cardHtml(p,"<h2>"+esc(p.t)+"</h2>"+itemsHtml(p.items))+
+      "<div class='actions two'><button class='act bad' id='m'>Missed items</button>"+
+      "<button class='act good' id='h'>Called it all</button></div>";
+    document.getElementById("h").addEventListener("click",()=>{S.hits++;S.i++;render();});
+    document.getElementById("m").addEventListener("click",()=>{S.miss.push(p);S.i++;render();});
+  });
+}
+
+function renderBriefScore(){
+  const total=S.hits+S.miss.length;
+  app.innerHTML = "<div class='card'><div class='band'><span class='num mono'>RUN COMPLETE</span></div>"+
+    "<h2 style='margin-bottom:4px'>"+S.hits+" of "+total+" paragraphs clean</h2>"+
+    (S.miss.length?"<p style='margin:0 16px 8px;color:#4A5A61;font-size:14px'>Weak paragraphs:</p>"+
+      itemsHtml(S.miss.map(p=>p.n+"  "+p.t)) :
+      "<p style='margin:0 16px;color:#4A5A61;font-size:14px'>Full brief called cold. Run it again scoped to the other chapter.</p>")+
+    "</div>"+
+    "<div class='actions'>"+
+    (S.miss.length?"<button class='act primary' id='redo'>Run the weak paragraphs</button>":"")+
+    "<button class='act' id='again2'>Start the run over</button></div>";
+  const r=document.getElementById("redo");
+  if(r) r.addEventListener("click",()=>{S.queue=S.miss.slice();S.i=0;S.hits=0;S.miss=[];render();});
+  document.getElementById("again2").addEventListener("click",reset);
+}
+
+function renderScore(hit,total,label){
+  app.innerHTML = "<div class='card'><div class='band'><span class='num mono'>"+esc(label.toUpperCase())+"</span></div>"+
+    "<div style='padding:10px 16px 4px'><div class='score'>"+pct(hit,total)+"%</div>"+
+    "<div style='color:#4A5A61;font-size:14px'>"+hit+" of "+total+"</div></div></div>"+
+    "<div class='actions'><button class='act primary' id='again3'>Run it again</button></div>";
+  document.getElementById("again3").addEventListener("click",reset);
+}
+
+function indexHtml(){
+  return DATA.filter(d=>S.scope==="both"||d.id===S.scope).map(d=>
+    "<p class='note'>"+esc(d.title)+"</p><div class='index'>"+
+    d.paras.map(p=>"<div class='row'><span class='n mono'>"+esc(p.n)+"</span><span>"+esc(p.t)+"</span>"+
+      "<span class='c'>"+p.items.filter(x=>x[0]!=="~"&&x[0]!=="!").length+"</span></div>").join("")+
+    "</div>").join("");
+}
+
+reset();
+</script>
+</body>
+</html>
